@@ -8,7 +8,6 @@ export default function NotificationCenter() {
   const [notifCount, setNotifCount] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
 
-  // Эффект для автоматического скрытия окна через 5 секунд
   useEffect(() => {
     if (toast) {
       const timer = setTimeout(() => setToast(null), 5000);
@@ -29,20 +28,16 @@ export default function NotificationCenter() {
         setMsgCount(msgData.count);
         setNotifCount(notifData.count);
 
-        // Получаем, какое количество мы уже показывали
         const lastShownMsg = Number(localStorage.getItem('lastShownMsg') || '0');
         const lastShownNotif = Number(localStorage.getItem('lastShownNotif') || '0');
 
-        // Показываем, только если количество УВЕЛИЧИЛОСЬ
         if (msgData.count > lastShownMsg) {
           setToast(`У вас ${msgData.count} новых сообщений!`);
           localStorage.setItem('lastShownMsg', msgData.count.toString());
-          // Обнуляем счетчик уведомлений, чтобы следующее уведомление сработало
           localStorage.setItem('lastShownNotif', notifData.count.toString());
         } else if (notifData.count > lastShownNotif) {
           setToast(`У вас ${notifData.count} новых уведомлений!`);
           localStorage.setItem('lastShownNotif', notifData.count.toString());
-          // Обнуляем счетчик сообщений
           localStorage.setItem('lastShownMsg', msgData.count.toString());
         }
       } catch (e) {
@@ -58,7 +53,6 @@ export default function NotificationCenter() {
   return (
     <>
       <Link href="/notifications" className="relative flex items-center gap-1.5 text-sm font-medium bg-emerald-600/30 hover:bg-emerald-600/60 p-2 sm:px-3 sm:py-1.5 rounded-full transition-colors whitespace-nowrap" onClick={() => {
-        // При переходе в уведомления сбрасываем "запомненное", чтобы следующее уведомление снова вызвало всплывашку
         localStorage.setItem('lastShownNotif', '0'); 
       }}>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 opacity-90">
@@ -66,7 +60,7 @@ export default function NotificationCenter() {
         </svg>
         <span className="hidden md:block">Уведомления</span>
         {notifCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse shadow-sm border border-white/20">
+          <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-extrabold text-white shadow-md ring-2 ring-white dark:ring-gray-800 animate-pulse">
             {notifCount}
           </span>
         )}
@@ -80,7 +74,7 @@ export default function NotificationCenter() {
         </svg>
         <span className="hidden md:block">Сообщения</span>
         {msgCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse shadow-sm border border-white/20">
+          <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-extrabold text-white shadow-md ring-2 ring-white dark:ring-gray-800 animate-pulse">
             {msgCount}
           </span>
         )}

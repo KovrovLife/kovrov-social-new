@@ -20,3 +20,21 @@ export async function GET() {
 
   return NextResponse.json({ tracks, myTracks });
 }
+
+export async function POST(req: Request) {
+  const userId = getUserId();
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const data = await req.formData();
+  const title = data.get('title') as string;
+  const artist = data.get('artist') as string;
+  const fileUrl = data.get('file_url') as string;
+
+  if (!title || !artist || !fileUrl) {
+    return NextResponse.json({ error: 'Не все поля заполнены' }, { status: 400 });
+  }
+
+  db.prepare('INSERT INTO tracks (user_id, title, artist, file_url) VALUES (?, ?, ?, ?)').run(userId, title, artist, fileUrl);
+
+  return NextResponse.json({ success: true });
+}

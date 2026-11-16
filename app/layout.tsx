@@ -8,6 +8,7 @@ import type { Viewport } from 'next';
 import NotificationCenter from './components/NotificationCenter';
 import PwaRegister from './components/PwaRegister';
 import ThemeToggle from './components/ThemeToggle';
+import ScrollToTop from './components/ScrollToTop';
 import { ThemeProvider } from 'next-themes';
 
 const inter = Inter({ subsets: ['latin', 'cyrillic'] });
@@ -20,7 +21,29 @@ export const viewport: Viewport = { themeColor: '#10b981', width: 'device-width'
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const userId = getUserId();
-  const user = userId ? (db.prepare('SELECT id, name, avatar_url, is_admin FROM users WHERE id = ?').get(userId) as any) : undefined;
+  const user = userId ? (db.prepare('SELECT id, name, avatar_url, is_admin, is_blocked, block_reason FROM users WHERE id = ?').get(userId) as any) : undefined;
+
+  // ПРОВЕРКА НА БЛОКИРОВКУ
+  if (user && user.is_blocked === 1) {
+    return (
+      <html lang="ru">
+        <body className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 text-center border dark:border-gray-700">
+            <div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-10 h-10">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Аккаунт заблокирован</h1>
+            <p className="text-gray-500 dark:text-gray-400 mb-4">
+              {user.block_reason ? `Причина: ${user.block_reason}` : 'Ваш аккаунт был заблокирован администратором за нарушение правил.'}
+            </p>
+            <p className="text-sm text-gray-400">Если вы считаете, что это ошибка, свяжитесь с поддержкой.</p>
+          </div>
+        </body>
+      </html>
+    );
+  }
 
   return (
     <html lang="ru" suppressHydrationWarning>
@@ -66,14 +89,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   </Link>
 
                   <NotificationCenter />
-                  
-                  <Link href="/new" className="flex items-center justify-center gap-1.5 text-sm bg-white text-emerald-600 p-2 sm:px-4 sm:py-1.5 rounded-full font-bold hover:bg-emerald-50 hover:shadow-md transition-all shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                      <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
-                    </svg>
-                    <span className="hidden md:block">Объявление</span>
-                  </Link>
-                  
+
                   <ThemeToggle />
 
                   <Link href={`/profile/${user.id}`} className="flex items-center gap-2 hover:bg-emerald-600/50 p-1 rounded-full transition shrink-0">
@@ -114,7 +130,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           </footer>
 
-          {/* Мобильная навигация */}
+          <ScrollToTop />
+
           {user && (
             <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t dark:border-gray-700 z-50 flex justify-around items-center py-2 pb-safe">
               <Link href="/" className="flex flex-col items-center text-gray-500 dark:text-gray-400 hover:text-emerald-500 transition">

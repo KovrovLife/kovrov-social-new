@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 
-const dbPath = path.join(process.cwd(), 'app.db');
+const dbPath = path.join('/data', 'app.db');
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY AUTOINCREMENT, slu
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT, 
   name TEXT NOT NULL UNIQUE, 
+  email TEXT UNIQUE,
   password_hash TEXT NOT NULL, 
   avatar_url TEXT,
   cover_url TEXT,
@@ -21,6 +22,8 @@ CREATE TABLE IF NOT EXISTS users (
   last_seen TEXT,
   district_id INTEGER NOT NULL REFERENCES districts(id), 
   is_admin INTEGER NOT NULL DEFAULT 0, 
+  is_blocked INTEGER NOT NULL DEFAULT 0,
+  block_reason TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS posts (
@@ -39,7 +42,14 @@ CREATE TABLE IF NOT EXISTS reports (
   id INTEGER PRIMARY KEY AUTOINCREMENT, post_id INTEGER NOT NULL REFERENCES posts(id), user_id INTEGER NOT NULL REFERENCES users(id), reason TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS messages (
-  id INTEGER PRIMARY KEY AUTOINCREMENT, sender_id INTEGER NOT NULL REFERENCES users(id), receiver_id INTEGER NOT NULL REFERENCES users(id), body TEXT NOT NULL, is_read INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  id INTEGER PRIMARY KEY AUTOINCREMENT, 
+  sender_id INTEGER NOT NULL REFERENCES users(id), 
+  receiver_id INTEGER NOT NULL REFERENCES users(id), 
+  body TEXT, 
+  type TEXT NOT NULL DEFAULT 'text', 
+  file_url TEXT,
+  is_read INTEGER NOT NULL DEFAULT 0, 
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS friends (
   id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES users(id), friend_id INTEGER NOT NULL REFERENCES users(id), status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -81,19 +91,10 @@ CREATE TABLE IF NOT EXISTS reel_comments (
   id INTEGER PRIMARY KEY AUTOINCREMENT, reel_id INTEGER NOT NULL REFERENCES reels(id) ON DELETE CASCADE, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, body TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS tracks (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  artist TEXT NOT NULL,
-  file_url TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, title TEXT NOT NULL, artist TEXT NOT NULL, file_url TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS user_tracks (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  track_id INTEGER NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  UNIQUE(user_id, track_id)
+  id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, track_id INTEGER NOT NULL REFERENCES tracks(id) ON DELETE CASCADE, created_at TEXT NOT NULL DEFAULT (datetime('now')), UNIQUE(user_id, track_id)
 );
 `);
 

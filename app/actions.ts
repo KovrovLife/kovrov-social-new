@@ -9,23 +9,41 @@ import { revalidatePath } from 'next/cache';
 
 export async function registerAction(formData: FormData) {
   const name = String(formData.get('name') || '').trim();
+  const email = String(formData.get('email') || '').trim().toLowerCase();
   const password = String(formData.get('password') || '');
   const districtId = Number(formData.get('district_id') || 0);
-  if (name.length < 2 || password.length < 6 || !districtId) redirect('/register?error=' + encodeURIComponent('Проверьте поля'));
-  const exists = db.prepare('SELECT id FROM users WHERE name = ?').get(name);
-  if (exists) redirect('/register?error=' + encodeURIComponent('Имя занято'));
+  
+  if (name.length < 2 || password.length < 6 || !districtId) {
+    redirect('/register?error=' + encodeURIComponent('Проверьте поля'));
+  }
+  if (!email || !email.includes('@')) {
+    redirect('/register?error=' + encodeURIComponent('Введите корректный Email'));
+  }
+
+  const existsName = db.prepare('SELECT id FROM users WHERE name = ?').get(name);
+  if (existsName) redirect('/register?error=' + encodeURIComponent('Имя занято'));
+
+  const existsEmail = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+  if (existsEmail) redirect('/register?error=' + encodeURIComponent('Этот Email уже используется'));
+
   const hash = bcrypt.hashSync(password, 10);
   const isAdmin = name === 'KovrovLife' ? 1 : 0;
-  const info = db.prepare('INSERT INTO users (name, password_hash, district_id, is_admin) VALUES (?, ?, ?, ?)').run(name, hash, districtId, isAdmin);
+  
+  const info = db.prepare('INSERT INTO users (name, email, password_hash, district_id, is_admin) VALUES (?, ?, ?, ?, ?)').run(name, email, hash, districtId, isAdmin);
+  
   setSession(Number(info.lastInsertRowid));
   redirect('/');
 }
 
 export async function loginAction(formData: FormData) {
-  const name = String(formData.get('name') || '').trim();
+  const login = String(formData.get('name') || '').trim();
   const password = String(formData.get('password') || '');
-  const user = db.prepare('SELECT * FROM users WHERE name = ?').get(name) as any;
-  if (!user || !bcrypt.compareSync(password, user.password_hash)) redirect('/login?error=' + encodeURIComponent('Неверные данные'));
+  
+  const user = db.prepare('SELECT * FROM users WHERE name = ? OR email = ?').get(login, login) as any;
+  
+  if (!user || !bcrypt.compareSync(password, user.password_hash)) {
+    redirect('/login?error=' + encodeURIComponent('Неверные данные'));
+  }
   setSession(user.id);
   redirect('/');
 }
@@ -269,9 +287,11 @@ export async function addReplyCommentAction(formData: FormData) {
 
 export async function addPhotoCommentAction(formData: FormData) {
   const userId = getUserId();
-  if (!userId) redirect('/login');
+  if (!userId) throw new Error('Unauthorized');
+  
   const photoId = Number(formData.get('photo_id'));
   const body = String(formData.get('body') || '').trim();
+  
   if (body) {
     db.prepare('INSERT INTO photo_comments (photo_id, user_id, body) VALUES (?, ?, ?)').run(photoId, userId, body);
     const photo = db.prepare('SELECT user_id FROM gallery_photos WHERE id = ?').get(photoId) as any;
@@ -279,8 +299,9 @@ export async function addPhotoCommentAction(formData: FormData) {
       db.prepare("INSERT INTO notifications (user_id, sender_id, type, target_id) VALUES (?, ?, 'comment_photo', ?)").run(photo.user_id, userId, photoId);
     }
   }
-  redirect('/photo/' + photoId);
+  return { success: true };
 }
+
 
 export async function sendMessageAction(formData: FormData) {
   const userId = getUserId();
@@ -545,4 +566,57 @@ export async function removeTrackFromMyMusicAction(formData: FormData) {
   
   db.prepare('DELETE FROM user_tracks WHERE user_id = ? AND track_id = ?').run(userId, trackId);
   redirect('/music');
+}
+export async function deletePhotoCommentAction(formData: FormData) {
+  const userId = getUserId();
+  if (!userId) throw new Error('Unauthorized');
+  const commentId = Number(formData.get('comment_id'));
+  
+  const comment = db.prepare('SELECT * FROM photo_comments WHERE id = ?').get(commentId) as any;
+  if (comment && comment.user_id === userId) {
+    db.prepare('DELETE FROM photo_comments WHERE id = ?').run(commentId);
+  }
+  return { success: true };
+}
+export async function deleteGalleryPhotoAction(formData: FormData) {
+  const userId = getUserId();
+  if (!userId) redirect('/login');
+  const photoId = Number(formData.get('photo_id'));
+
+  // Проверяем, что фото принадлежит этому пользователю
+  const photo = db.prepare('SELECT * FROM gallery_photos WHERE id = ? AND user_id = ?').get(photoId, userId) as any;
+  
+  if (photo) {
+    // Удаляем файл с диска (опционально, но полезно)
+    const filePath = path.join(process.cwd(), 'public', photo.photo_url);
+    try {
+      await fs.promises.unlink(filePath);
+    } catch (e) {
+      console.error("Не удалось удалить файл с диска:", e);
+    }
+    
+    // Удаляем запись из базы (лайки и комменты удалятся каскадно)
+    db.prepare('DELETE FROM gallery_photos WHERE id = ?').run(photoId);
+  }
+
+  redirect('/profile/' + userId + '?tab=photos');
+}
+
+export async function toggleBlockUserAction(formData: FormData) {
+  const userId = getUserId();
+  if (!userId) redirect('/login');
+  
+  const me = db.prepare('SELECT name, is_admin FROM users WHERE id = ?').get(userId) as any;
+  if (!me || me.is_admin !== 1) redirect('/');
+  
+  const targetId = Number(formData.get('target_id'));
+  const reason = String(formData.get('reason') || '').trim();
+  
+  const targetUser = db.prepare('SELECT is_blocked, name FROM users WHERE id = ?').get(targetId) as any;
+  if (targetUser && targetUser.name !== 'KovrovLife') {
+    const newStatus = targetUser.is_blocked === 1 ? 0 : 1;
+    db.prepare('UPDATE users SET is_blocked = ?, block_reason = ? WHERE id = ?').run(newStatus, newStatus === 1 ? reason : null, targetId);
+  }
+  
+  redirect('/admin?tab=all-users');
 }

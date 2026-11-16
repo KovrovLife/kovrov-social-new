@@ -12,7 +12,6 @@ export async function GET(req: Request) {
   const photoId = Number(searchParams.get('id'));
   if (!photoId) return NextResponse.json({ error: 'No ID' }, { status: 400 });
 
-  // Получаем фото и автора
   const photo = db.prepare(`
     SELECT gallery_photos.*, users.name AS author_name, users.avatar_url AS author_avatar
     FROM gallery_photos 
@@ -22,11 +21,10 @@ export async function GET(req: Request) {
 
   if (!photo) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  // Лайки
   const likesCount = (db.prepare('SELECT COUNT(*) as c FROM photo_likes WHERE photo_id = ? AND type = ?').get(photoId, 'like') as any).c;
+  const dislikesCount = (db.prepare('SELECT COUNT(*) as c FROM photo_likes WHERE photo_id = ? AND type = ?').get(photoId, 'dislike') as any).c;
   const myVote = db.prepare('SELECT type FROM photo_likes WHERE photo_id = ? AND user_id = ?').get(photoId, userId) as any;
 
-  // Комментарии
   const comments = db.prepare(`
     SELECT photo_comments.*, users.name AS author_name, users.avatar_url AS author_avatar 
     FROM photo_comments 
@@ -38,6 +36,7 @@ export async function GET(req: Request) {
   return NextResponse.json({
     photo,
     likesCount,
+    dislikesCount,
     myVote: myVote?.type || null,
     comments
   });
