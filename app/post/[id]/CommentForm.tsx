@@ -11,7 +11,14 @@ export default function CommentForm({ postId, isPhoto = false }: { postId: numbe
     setText((prev) => prev + emoji);
   };
 
-  const actionToUse = isPhoto ? addPhotoCommentAction : addCommentAction;
+  const handleFormAction = async (formData: FormData): Promise<void> => {
+    if (isPhoto) {
+      await addPhotoCommentAction(formData);
+    } else {
+      await addCommentAction(formData);
+    }
+    setText('');
+  };
 
   return (
     <div className="flex flex-col gap-2 mt-2 w-full">
@@ -28,7 +35,7 @@ export default function CommentForm({ postId, isPhoto = false }: { postId: numbe
         ))}
       </div>
       
-      <form action={actionToUse} className="flex flex-col gap-2">
+      <form action={handleFormAction} className="flex flex-col gap-2">
         <input type="hidden" name={isPhoto ? "photo_id" : "post_id"} value={postId} />
         <textarea
           name="body"
