@@ -1,18 +1,26 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
-const s3Client = new S3Client({
-  region: process.env.S3_REGION || 'ru-1',
-  endpoint: process.env.S3_ENDPOINT || 'https://twcstorage.ru',
-  credentials: {
-    accessKeyId: process.env.S3_ACCESS_KEY!,
-    secretAccessKey: process.env.S3_SECRET_KEY!,
-  },
-  forcePathStyle: true,
-});
-
 export async function uploadToS3(file: File, filename: string): Promise<string> {
-  const bucket = process.env.S3_BUCKET || 'kovrov-life-uploads';
-  const endpoint = process.env.S3_ENDPOINT || 'https://twcstorage.ru';
+  const bucket = 'kovrov-life-uploads';
+  const endpoint = 'https://twcstorage.ru';
+  const region = 'ru-1';
+  const accessKeyId = (process.env.S3_ACCESS_KEY || '').trim();
+  const secretAccessKey = (process.env.S3_SECRET_KEY || '').trim();
+
+  if (!accessKeyId || !secretAccessKey) {
+    throw new Error('Не заданы ключи S3_ACCESS_KEY или S3_SECRET_KEY');
+  }
+
+  const s3Client = new S3Client({
+    region,
+    endpoint,
+    credentials: {
+      accessKeyId,
+      secretAccessKey,
+    },
+    forcePathStyle: true,
+  });
+
   const buffer = Buffer.from(await file.arrayBuffer());
 
   await s3Client.send(
@@ -21,9 +29,8 @@ export async function uploadToS3(file: File, filename: string): Promise<string> 
       Key: filename,
       Body: buffer,
       ContentType: file.type || 'application/octet-stream',
-      ACL: 'public-read',
     })
   );
 
-  return `${endpoint}/${bucket}/${filename}`;
+  return endpoint + '/' + bucket + '/' + filename;
 }
