@@ -6,11 +6,11 @@ import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
-export default function AdminPage({ searchParams }: { searchParams: { tab?: string } }) {
+export default async function AdminPage({ searchParams }: { searchParams: { tab?: string } }) {
   const userId = getUserId();
   if (!userId) redirect('/login');
 
-  const me = db.prepare('SELECT name, is_admin FROM users WHERE id = ?').get(userId) as any;
+  const me = (await db.get('SELECT name, is_admin FROM users WHERE id = ?', [userId])) as any;
   
   if (me.is_admin !== 1) {
     return <div className="text-center py-20 text-red-600 font-bold">Доступ запрещен. Вы не администратор.</div>;
@@ -18,19 +18,16 @@ export default function AdminPage({ searchParams }: { searchParams: { tab?: stri
 
   const currentTab = searchParams.tab || 'posts';
 
-  const postReports = db.prepare(`
+  const postReports = (await db.all(`
     SELECT r.id as report_id, r.reason, r.created_at, p.id as post_id, p.title, p.status, u.name as reporter, u.avatar_url as reporter_avatar
-    FROM reports r JOIN posts p ON r.post_id = p.id JOIN users u ON r.user_id = u.id ORDER BY r.created_at DESC
-  `).all() as any[];
+    FROM reports r JOIN posts p ON r.post_id = p.id JOIN users u ON r.user_id = u.id ORDER BY r.created_at DESC`)) as any[];
 
-  const userReports = db.prepare(`
+  const userReports = (await db.all(`
     SELECT r.id as report_id, r.reason, r.created_at, u.id as target_id, u.name as target_name, u.avatar_url as target_avatar
-    FROM user_reports r JOIN users u ON r.user_id = u.id ORDER BY r.created_at DESC
-  `).all() as any[];
+    FROM user_reports r JOIN users u ON r.user_id = u.id ORDER BY r.created_at DESC`)) as any[];
 
-  const allUsers = db.prepare(`
-    SELECT id, name, avatar_url, email, is_admin, is_blocked, block_reason, created_at FROM users ORDER BY created_at DESC
-  `).all() as any[];
+  const allUsers = (await db.all(`
+    SELECT id, name, avatar_url, email, is_admin, is_blocked, block_reason, created_at FROM users ORDER BY created_at DESC`)) as any[];
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">

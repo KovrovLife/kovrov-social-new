@@ -5,13 +5,12 @@ import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
-export default function NotificationsPage({ searchParams }: { searchParams: { filter?: string } }) {
+export default async function NotificationsPage({ searchParams }: { searchParams: { filter?: string } }) {
   const userId = getUserId();
   if (!userId) redirect('/login');
 
   const filter = searchParams.filter || 'all';
 
-  // Получаем уведомления (если фильтр "unread" — только непрочитанные)
   let sql = `
     SELECT n.*, u.name AS sender_name, u.avatar_url AS sender_avatar 
     FROM notifications n
@@ -23,14 +22,12 @@ export default function NotificationsPage({ searchParams }: { searchParams: { fi
   }
   sql += ' ORDER BY n.created_at DESC LIMIT 50';
 
-  const notifications = db.prepare(sql).all(userId) as any[];
+  const notifications = (await db.all(sql, [userId])) as any[];
 
-  // Помечаем как прочитанные (только если мы на вкладке "Все")
   if (filter === 'all') {
-    db.prepare('UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0').run(userId);
+    await db.run('UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0', [userId]);
   }
 
-  // Группировка по датам
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
@@ -52,7 +49,6 @@ export default function NotificationsPage({ searchParams }: { searchParams: { fi
     }
   });
 
-  // Функция для получения иконки и цвета по типу уведомления
   const getIcon = (type: string) => {
     switch (type) {
       case 'like_post':
@@ -78,7 +74,6 @@ export default function NotificationsPage({ searchParams }: { searchParams: { fi
           <span className="w-2 h-6 bg-emerald-500 rounded-full"></span> Уведомления
         </h1>
         
-        {/* Фильтры */}
         <div className="flex gap-2">
           <Link 
             href="/notifications?filter=all" 

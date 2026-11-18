@@ -5,11 +5,11 @@ import MessengerLayout from './MessengerLayout';
 
 export const dynamic = 'force-dynamic';
 
-export default function MessagesPage() {
+export default async function MessagesPage() {
   const userId = getUserId();
   if (!userId) redirect('/login');
 
-  const chats = db.prepare(`
+  const chats = (await db.all(`
     SELECT DISTINCT 
       u.id, 
       u.name, 
@@ -20,8 +20,7 @@ export default function MessagesPage() {
     FROM users u
     JOIN messages m ON (m.sender_id = u.id AND m.receiver_id = ?) OR (m.receiver_id = u.id AND m.sender_id = ?)
     WHERE u.id != ?
-    ORDER BY last_time DESC
-  `).all(userId, userId, userId, userId, userId, userId, userId) as any[];
+    ORDER BY last_time DESC`, [userId, userId, userId, userId, userId, userId, userId])) as any[];
 
   return <MessengerLayout chats={chats} currentUserId={userId} />;
 }

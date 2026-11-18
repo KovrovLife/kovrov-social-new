@@ -7,7 +7,7 @@ import MessageInput from './MessageInput';
 
 export const dynamic = 'force-dynamic';
 
-export default function ChatPage({ params }: { params: { id: string } }) {
+export default async function ChatPage({ params }: { params: { id: string } }) {
   const userId = getUserId();
   if (!userId) redirect('/login');
 
@@ -16,14 +16,14 @@ export default function ChatPage({ params }: { params: { id: string } }) {
 
   markMessagesAsRead(userId, otherUserId);
 
-  const otherUser = db.prepare('SELECT name FROM users WHERE id = ?').get(otherUserId) as { name: string } | undefined;
+  const otherUser = (await db.get('SELECT name FROM users WHERE id = ?', [otherUserId])) as { name: string } | undefined;
   if (!otherUser) redirect('/messages');
 
-  const messages = db.prepare(`
+  const messages = (await db.all(`
     SELECT * FROM messages 
     WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)
     ORDER BY created_at ASC
-  `).all(userId, otherUserId, otherUserId, userId) as any[];
+  `, [userId, otherUserId, otherUserId, userId])) as any[];
 
   return (
     <div className="max-w-2xl mx-auto h-[75vh] flex flex-col bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-sm overflow-hidden">

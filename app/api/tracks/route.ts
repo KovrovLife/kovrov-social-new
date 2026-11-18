@@ -8,15 +8,14 @@ export async function GET() {
   const userId = getUserId();
   if (!userId) return NextResponse.json({ tracks: [], myTracks: [] });
 
-  const tracks = db.prepare('SELECT * FROM tracks ORDER BY created_at DESC').all() as any[];
+  const tracks = (await db.all('SELECT * FROM tracks ORDER BY created_at DESC')) as any[];
   
-  const myTracks = db.prepare(`
+  const myTracks = (await db.all(`
     SELECT tracks.* 
     FROM user_tracks 
     JOIN tracks ON tracks.id = user_tracks.track_id 
     WHERE user_tracks.user_id = ?
-    ORDER BY user_tracks.created_at DESC
-  `).all(userId) as any[];
+    ORDER BY user_tracks.created_at DESC`, [userId])) as any[];
 
   return NextResponse.json({ tracks, myTracks });
 }
@@ -34,7 +33,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Не все поля заполнены' }, { status: 400 });
   }
 
-  db.prepare('INSERT INTO tracks (user_id, title, artist, file_url) VALUES (?, ?, ?, ?)').run(userId, title, artist, fileUrl);
+  await db.run('INSERT INTO tracks (user_id, title, artist, file_url) VALUES (?, ?, ?, ?)', [userId, title, artist, fileUrl]);
 
   return NextResponse.json({ success: true });
 }

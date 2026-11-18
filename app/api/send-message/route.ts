@@ -15,7 +15,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Bad Request' }, { status: 400 });
     }
 
-    db.prepare('INSERT INTO messages (sender_id, receiver_id, body) VALUES (?, ?, ?)').run(userId, receiverId, body.trim());
+    db.run('INSERT INTO messages (sender_id, receiver_id, body) VALUES (?, ?, ?)', [userId, receiverId, body.trim()]);
     
     return NextResponse.json({ success: true });
   } catch (error) {

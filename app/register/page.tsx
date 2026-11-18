@@ -2,8 +2,8 @@ import { db } from '@/lib/db';
 import { registerAction } from '../actions';
 import Link from 'next/link';
 
-export default function Register({ searchParams }: { searchParams: { error?: string } }) {
-  const dists = db.prepare('SELECT * FROM districts').all() as { id: number; name: string }[];
+export default async function Register({ searchParams }: { searchParams: { error?: string } }) {
+  const dists = (await db.all('SELECT * FROM districts')) as { id: number; name: string }[];
   
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">

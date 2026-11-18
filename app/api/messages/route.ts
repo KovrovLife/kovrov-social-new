@@ -12,13 +12,12 @@ export async function GET(req: Request) {
   const chatId = Number(searchParams.get('chatId'));
   if (!chatId) return NextResponse.json([]);
 
-  const messages = db.prepare(`
+  const messages = (await db.all(`
     SELECT m.*, u.name AS sender_name 
     FROM messages m 
     JOIN users u ON m.sender_id = u.id
     WHERE (m.sender_id = ? AND m.receiver_id = ?) OR (m.sender_id = ? AND m.receiver_id = ?)
-    ORDER BY m.created_at ASC
-  `).all(userId, chatId, chatId, userId) as any[];
+    ORDER BY m.created_at ASC`, [userId, chatId, chatId, userId])) as any[];
 
   return NextResponse.json(messages);
 }

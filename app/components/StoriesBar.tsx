@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import AddStoryButton from './AddStoryButton';
 
 export default function StoriesBar({ currentUserId }: { currentUserId: number }) {
   const [stories, setStories] = useState<any[]>([]);
+  const storiesRef = useRef<HTMLDivElement>(null);
+  const [swipeX, setSwipeX] = useState(0);
 
   useEffect(() => {
     fetch('/api/stories')
@@ -14,8 +16,28 @@ export default function StoriesBar({ currentUserId }: { currentUserId: number })
       .catch(console.error);
   }, []);
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setSwipeX(e.touches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!storiesRef.current) return;
+    const diff = e.touches[0].clientX - swipeX;
+    const maxSwipe = storiesRef.current.clientWidth / 2;
+    
+    // Swipe left to navigate to next story
+    if (Math.abs(diff) > maxSwipe) {
+      const href = diff > 0 ? '/stories' : `/stories/${stories[0]?.stories[0]?.id}`;
+      window.location.href = href;
+    }
+  };
+
   return (
-    <div className="flex items-center gap-4 overflow-x-auto pb-4 mb-6 scrollbar-hide">
+    <div 
+      className="flex items-center gap-4 overflow-x-auto pb-4 mb-6 scrollbar-hide"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+    >
       <AddStoryButton />
 
       {stories.map((userStory) => {
@@ -28,6 +50,8 @@ export default function StoriesBar({ currentUserId }: { currentUserId: number })
             key={userStory.user_id} 
             href={`/stories/${userStory.stories[0].id}`} 
             className="flex flex-col items-center gap-1 shrink-0 group"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
           >
             <div className={`w-16 h-16 rounded-full p-[2px] transition-transform group-hover:scale-105 ${
               hasUnviewed 

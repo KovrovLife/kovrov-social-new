@@ -7,17 +7,15 @@ import { sendFriendRequest } from '../actions';
 
 export const dynamic = 'force-dynamic';
 
-export default function PeoplePage({ searchParams }: { searchParams: { q?: string; dist?: string } }) {
+export default async function PeoplePage({ searchParams }: { searchParams: { q?: string; dist?: string } }) {
   const userId = getUserId();
   if (!userId) redirect('/login');
   
   const query = searchParams.q || '';
   const distId = searchParams.dist || '';
 
-  // Получаем список районов для фильтра
-  const districts = db.prepare('SELECT * FROM districts').all() as any[];
+  const districts = (await db.all('SELECT * FROM districts')) as any[];
 
-  // Строим SQL-запрос в зависимости от фильтров
   let sql = `
     SELECT u.id, u.name, u.avatar_url, u.last_seen, d.name as district_name 
     FROM users u 
@@ -27,23 +25,22 @@ export default function PeoplePage({ searchParams }: { searchParams: { q?: strin
   const params: (string | number)[] = [userId];
 
   if (query) {
-    sql += ' AND u.name LIKE ?';
+    sql += ' AND u.name ILIKE ?';
     params.push(`%${query}%`);
   }
   if (distId) {
     sql += ' AND u.district_id = ?';
     params.push(Number(distId));
   }
-  sql += ' ORDER BY u.last_seen DESC LIMIT 50';
+  sql += ' ORDER BY u.last_seen DESC NULLS LAST LIMIT 50';
 
-  const users = db.prepare(sql).all(...params) as any[];
+  const users = (await db.all(sql, params)) as any[];
 
-  // Получаем связи текущего пользователя, чтобы знать, кто уже в друзьях / кому отправлена заявка
-  const myFriendships = db.prepare(`
+  const myFriendships = (await db.all(`
     SELECT friend_id, status FROM friends WHERE user_id = ?
     UNION
     SELECT user_id, status FROM friends WHERE friend_id = ?
-  `).all(userId, userId) as any[];
+  `, [userId, userId])) as any[];
 
   const friendshipMap = new Map();
   myFriendships.forEach(f => {
@@ -59,7 +56,6 @@ export default function PeoplePage({ searchParams }: { searchParams: { q?: strin
         </h1>
       </div>
 
-      {/* Форма поиска и фильтров */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border dark:border-gray-700 shadow-sm">
         <form className="flex flex-col sm:flex-row gap-3">
           <input 
@@ -83,7 +79,6 @@ export default function PeoplePage({ searchParams }: { searchParams: { q?: strin
         </form>
       </div>
 
-      {/* Список пользователей */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {users.map((u) => {
           const status = formatOnlineStatus(u.last_seen);
@@ -95,7 +90,7 @@ export default function PeoplePage({ searchParams }: { searchParams: { q?: strin
                 {u.avatar_url ? (
                   <img src={u.avatar_url} alt="ava" className="w-16 h-16 rounded-full object-cover border-2 border-white dark:border-gray-800 shadow-sm" />
                 ) : (
-                  <div className="w-16 h-16 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-bold text-2xl shadow-sm">{u.name[0].toUpperCase()}</div>
+                  <div className="w-16 h-16 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-bold text-2xl shadow-sm">{u.name.toUpperCase()}</div>
                 )}
                 {status.isOnline && (
                   <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full"></div>

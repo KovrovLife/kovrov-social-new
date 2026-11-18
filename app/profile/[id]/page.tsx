@@ -10,26 +10,26 @@ import PhotoGallery from './PhotoGallery';
 
 export const dynamic = 'force-dynamic';
 
-export default function ProfilePage({ params, searchParams }: { params: { id: string }; searchParams: { reported?: string, tab?: string, edit?: string } }) {
+export default async function ProfilePage({ params, searchParams }: { params: { id: string }; searchParams: { reported?: string, tab?: string, edit?: string } }) {
   const myId = getUserId();
   if (!myId) redirect('/login');
   const targetId = Number(params.id);
   if (isNaN(targetId)) notFound();
   
-  const profileUser = db.prepare('SELECT u.*, d.name AS district_name FROM users u JOIN districts d ON u.district_id = d.id WHERE u.id = ?').get(targetId) as any;
+  const profileUser = await db.get('SELECT u.*, d.name AS district_name FROM users u JOIN districts d ON u.district_id = d.id WHERE u.id = ?', [targetId]) as any;
   if (!profileUser) notFound();
   
   const status = formatOnlineStatus(profileUser.last_seen);
 
-  const districts = db.prepare('SELECT * FROM districts').all() as any[];
-  const me = db.prepare('SELECT name, is_admin FROM users WHERE id = ?').get(myId) as any;
-  const isSuperAdmin = me.name === 'KovrovLife';
+  const districts = await db.all('SELECT * FROM districts') as any[];
+  const me = await db.get('SELECT name, is_admin FROM users WHERE id = ?', [myId]) as any;
+  const isSuperAdmin = me?.name === 'KovrovLife';
   const isMe = myId === targetId;
 
-  const postCount = db.prepare('SELECT COUNT(*) as c FROM posts WHERE user_id = ?').get(targetId) as any;
-  const friendsCount = db.prepare(`SELECT COUNT(*) as c FROM friends WHERE (user_id = ? OR friend_id = ?) AND status = 'accepted'`).get(targetId, targetId) as any;
+  const postCount = await db.get('SELECT COUNT(*) as c FROM posts WHERE user_id = ?', [targetId]) as any;
+  const friendsCount = await db.get("SELECT COUNT(*) as c FROM friends WHERE (user_id = ? OR friend_id = ?) AND status = 'accepted'", [targetId, targetId]) as any;
   
-  const wallPosts = db.prepare(`
+  const wallPosts = await db.all(`
     SELECT wall_posts.*, users.name AS author_name, users.avatar_url AS author_avatar,
     (SELECT COUNT(*) FROM wall_likes WHERE wall_post_id = wall_posts.id AND type = 'like') as likes_count,
     (SELECT COUNT(*) FROM wall_likes WHERE wall_post_id = wall_posts.id AND type = 'dislike') as dislikes_count
@@ -37,25 +37,26 @@ export default function ProfilePage({ params, searchParams }: { params: { id: st
     JOIN users ON users.id = wall_posts.author_id 
     WHERE wall_posts.owner_id = ? 
     ORDER BY wall_posts.created_at DESC
-  `).all(targetId) as any[];
+  `, [targetId]) as any[];
 
-  const allWallComments = db.prepare(`
+  const allWallComments = await db.all(`
     SELECT wall_comments.*, users.name AS author_name, users.avatar_url AS author_avatar
     FROM wall_comments 
     JOIN users ON users.id = wall_comments.user_id 
     WHERE wall_comments.wall_post_id IN (SELECT id FROM wall_posts WHERE owner_id = ?)
     ORDER BY wall_comments.created_at ASC
-  `).all(targetId) as any[];
+  `, [targetId]) as any[];
 
-  const friendship = db.prepare('SELECT * FROM friends WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)').get(myId, targetId, targetId, myId) as any;
+  const friendship = await db.get('SELECT * FROM friends WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)', [myId, targetId, targetId, myId]) as any;
   const isFriend = friendship?.status === 'accepted';
   const isPendingSent = friendship?.status === 'pending' && friendship.user_id === myId;
   const isPendingReceived = friendship?.status === 'pending' && friendship.friend_id === myId;
   
-  const friends = db.prepare(`SELECT u.id, u.name, u.avatar_url FROM friends f JOIN users u ON u.id = CASE WHEN f.user_id = ? THEN f.friend_id ELSE f.user_id END WHERE (f.user_id = ? OR f.friend_id = ?) AND f.status = 'accepted' LIMIT 6`).all(targetId, targetId, targetId) as any[];
-  const galleryPhotos = db.prepare("SELECT * FROM gallery_photos WHERE user_id = ? ORDER BY created_at DESC").all(targetId) as any[];
+  const friends = await db.all("SELECT u.id, u.name, u.avatar_url FROM friends f JOIN users u ON u.id = CASE WHEN f.user_id = ? THEN f.friend_id ELSE f.user_id END WHERE (f.user_id = ? OR f.friend_id = ?) AND f.status = 'accepted' LIMIT 6", [targetId, targetId, targetId]) as any[];
+  const galleryPhotos = await db.all("SELECT * FROM gallery_photos WHERE user_id = ? ORDER BY created_at DESC", [targetId]) as any[];
 
   const isEditing = isMe && searchParams.edit === 'true';
+  const myWallLikes = await db.all("SELECT wall_post_id, type FROM wall_likes WHERE user_id = ? AND wall_post_id IN (SELECT id FROM wall_posts WHERE owner_id = ?)", [myId, targetId]) as any[];
 
   const formatBirthday = (dateStr: string) => {
     if (!dateStr) return '';
@@ -283,8 +284,9 @@ export default function ProfilePage({ params, searchParams }: { params: { id: st
           {wallPosts.length === 0 && <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">Здесь пока пусто.</p>}
           
           {wallPosts.map((wp) => {
-            const myVote = db.prepare('SELECT type FROM wall_likes WHERE wall_post_id = ? AND user_id = ?').get(wp.id, myId) as any;
-            const postComments = allWallComments.filter((c: any) => c.wall_post_id === wp.id);
+            const myVote = myWallLikes.find((l: any) => l.wall_post_id === wp.id);
+
+             const postComments = allWallComments.filter((c: any) => c.wall_post_id === wp.id);
             
             return (
               <div key={wp.id} className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-2xl p-4 shadow-sm">

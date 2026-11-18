@@ -5,23 +5,39 @@ import { getUserId } from '@/lib/auth';
 import { logoutAction } from './actions';
 import { Inter } from 'next/font/google';
 import type { Viewport } from 'next';
-import NotificationCenter from './components/NotificationCenter';
-import PwaRegister from './components/PwaRegister';
-import ThemeToggle from './components/ThemeToggle';
 import ScrollToTop from './components/ScrollToTop';
 import { ThemeProvider } from 'next-themes';
+import NotificationCenter from './components/NotificationCenter';
+import ThemeToggle from './components/ThemeToggle';
 
 const inter = Inter({ subsets: ['latin', 'cyrillic'] });
-export const metadata = { 
+export const metadata = {
   title: 'КовровLife',
   description: 'Городская соцсеть города Ковров',
-  manifest: '/manifest.webmanifest'
+  manifest: '/manifest.webmanifest',
 };
-export const viewport: Viewport = { themeColor: '#10b981', width: 'device-width', initialScale: 1, maximumScale: 1 };
+export const viewport: Viewport = {
+  themeColor: '#10b981',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+};
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+const bottomNavItems = [
+  { key: 'home', label: 'Главная', icon: 'M11 15h.01M15 10a5 5 0 01-10 0 5 5 0 0110 0z', path: '/' },
+  { key: 'reels', label: 'Рилсы', icon: 'M12 19l9 2-9-.5L23 22l-2-3-2 3h-2.8l-.5.3L12 19zM5 13a2 2 0 100-4 2 2 0 000 4zM19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14-2a4 4 0 01-4 4 4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v14a4 4 0 01-4 4z', path: '/reels' },
+  { key: 'new', label: 'Новое', icon: 'M12 5v.01M12a1 1 0 110 2 1 1 0 010-2zm0 12a1 1 0 100 2 1 1 0 010-2zm0-8a1 1 0 100-2 1 1 0 010 2z', path: '/new' },
+  { key: 'music', label: 'Музыка', icon: 'M8.75 5a2.25 2.25 0 110-4.5 2.25 2.25 0 010 4.5zM5 12a2 2 0 100-4 2 2 0 000 4zm3.5 3.5a.75.75 0 000-1.5.75.75 0 00-.75.75v5a.75.75 0 001.5 0v-5zm5 0a.75.75 0 000-1.5.75.75 0 00-.75.75v5a.75.75 0 001.5 0v-5zM15.75 5a2.25 2.25 0 110-4.5 2.25 2.25 0 010 4.5zm3.75 6.75a.75.75 0 000-1.5.75.75 0 00-.75.75v5a.75.75 0 001.5 0v-5zm0-8a.75.75 0 000-1.5.75.75 0 00-.75.75v13a.75.75 0 001.5 0v-5z', path: '/music' },
+  { key: 'profile', label: 'Профиль', icon: 'M16 7a4 4 0 10-8 0 4 4 0 008 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z', path: '/profile/[[id]]' },
+];
+
+const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const userId = getUserId();
-  const user = userId ? (db.prepare('SELECT id, name, avatar_url, is_admin, is_blocked, block_reason FROM users WHERE id = ?').get(userId) as any) : undefined;
+  const user = userId
+    ? ((await db.get('SELECT id, name, avatar_url, is_admin, is_blocked, block_reason FROM users WHERE id = ?', [userId])) as any)
+    : undefined;
 
   // ПРОВЕРКА НА БЛОКИРОВКУ
   if (user && user.is_blocked === 1) {
@@ -47,10 +63,38 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <html lang="ru" suppressHydrationWarning>
-      <body className={`${inter.className} bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex flex-col min-h-screen transition-colors duration-300 pb-16 md:pb-0`}>
-        <ThemeProvider attribute="class" defaultTheme="light">
-          <PwaRegister />
-          <header className="bg-gradient-to-r from-emerald-500 to-teal-400 dark:from-emerald-800 dark:to-teal-900 text-white shadow-md sticky top-0 z-50 transition-colors duration-300">
+      <body
+        className={`${inter.className} bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex flex-col min-h-screen transition-colors duration-300 ${isMobile ? 'pb-0' : 'pb-16'}`}
+      >
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+
+          {isMobile && (
+            <nav
+              className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t dark:border-gray-700 z-50 flex justify-around items-center py-2 pb-safe"
+            >
+              {bottomNavItems.map((item) => (
+                <Link
+                  key={item.key}
+                  href={item.path}
+                  className="flex flex-col items-center text-gray-500 dark:text-gray-400 hover:text-emerald-500 transition"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="w-6 h-6 mb-1"
+                  >
+                    <path d={item.icon} />
+                  </svg>
+                  <span className="text-[10px] font-medium">{item.label}</span>
+                </Link>
+              ))}
+            </nav>
+          )}
+
+          {!isMobile && (
+            <>
+            <header className="bg-gradient-to-r from-emerald-500 to-teal-400 dark:from-emerald-800 dark:to-teal-900 text-white shadow-md sticky top-0 z-50 transition-colors duration-300">
             <div className="max-w-3xl mx-auto flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3">
               
               <Link href="/" className="flex items-center gap-2 group shrink-0">
@@ -112,59 +156,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               )}
             </div>
           </header>
+          </>)}
           
-          <main className="flex-1 w-full max-w-3xl mx-auto px-3 sm:px-4 py-4 sm:py-6">{children}</main>
-          
-          <footer className="bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-6 mt-auto transition-colors duration-300">
-            <div className="max-w-3xl mx-auto px-4 flex flex-col items-center gap-3">
-              <div className="text-sm text-gray-500 dark:text-gray-400 flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
-                <span className="font-semibold text-gray-800 dark:text-gray-200">Ковров<span className="text-emerald-600 dark:text-emerald-400">Life</span></span>
-                <span className="hidden sm:block text-gray-400 dark:text-gray-600">•</span>
-                <span>© 2026. Все права защищены.</span>
-              </div>
-              <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs text-gray-500 dark:text-gray-400 font-medium">
-                <Link href="/legal/rules" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition">Правила</Link>
-                <Link href="/legal/privacy" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition">Конфиденциальность</Link>
-                <Link href="/legal/terms" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition">Соглашение</Link>
-              </div>
-            </div>
-          </footer>
+          <main className="pt-20">{children}</main>
 
           <ScrollToTop />
 
-          {user && (
-            <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t dark:border-gray-700 z-50 flex justify-around items-center py-2 pb-safe">
-              <Link href="/" className="flex flex-col items-center text-gray-500 dark:text-gray-400 hover:text-emerald-500 transition">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M11.47 3.84a.75.75 0 011.06 0l8.69 8.69a.75.75 0 101.06-1.06l-8.689-8.69a2.25 2.25 0 00-3.182 0l-8.69 8.69a.75.75 0 001.061 1.06l8.69-8.69z" /><path d="M12 5.432l8.159 8.159c.03.03.06.058.091.086v6.198c0 1.035-.84 1.875-1.875 1.875H15a.75.75 0 01-.75-.75v-4.5a.75.75 0 00-.75-.75h-3a.75.75 0 00-.75.75V21a.75.75 0 01-.75.75H5.625a1.875 1.875 0 01-1.875-1.875v-6.198a2.29 2.29 0 00.091-.086L12 5.43z" /></svg>
-                <span className="text-[10px] mt-1 font-medium">Главная</span>
-              </Link>
-
-              <Link href="/reels" className="flex flex-col items-center text-gray-500 dark:text-gray-400 hover:text-emerald-500 transition">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M4.5 4.5a3 3 0 00-3 3v9a3 3 0 003 3h15a3 3 0 003-3v-9a3 3 0 00-3-3h-15zm4.125 3.375a.75.75 0 011.06 0l4.5 4.5a.75.75 0 010 1.06l-4.5 4.5a.75.75 0 01-1.06-1.06L12.44 12 8.625 8.185a.75.75 0 010-1.06z" /></svg>
-                <span className="text-[10px] mt-1 font-medium">Рилсы</span>
-              </Link>
-
-              <Link href="/new" className="flex flex-col items-center text-emerald-600 dark:text-emerald-400 -mt-4 bg-white dark:bg-gray-800 p-1 rounded-full shadow-md border dark:border-gray-700">
-                <div className="bg-emerald-600 text-white rounded-full p-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                </div>
-              </Link>
-
-              <Link href="/music" className="flex flex-col items-center text-gray-500 dark:text-gray-400 hover:text-emerald-500 transition">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path fillRule="evenodd" d="M19.952 1.651a.75.75 0 01.298.599V16.303a3 3 0 01-2.176 2.884l-1.32.377a2.553 2.553 0 11-1.403-4.909l2.311-.66a1.5 1.5 0 001.088-1.442V6.994l-9 2.572v9.737a3 3 0 01-2.176 2.884l-1.32.377a2.553 2.553 0 11-1.402-4.909l2.31-.66a1.5 1.5 0 001.088-1.442V5.25a.75.75 0 01.544-.721l10.5-3a.75.75 0 01.658.122z" clipRule="evenodd" /></svg>
-                <span className="text-[10px] mt-1 font-medium">Музыка</span>
-              </Link>
-
-              <Link href={`/profile/${user.id}`} className="flex flex-col items-center text-gray-500 dark:text-gray-400 hover:text-emerald-500 transition">
-                {user.avatar_url ? (
-                  <img src={user.avatar_url} alt="Аватар" className="w-6 h-6 rounded-full object-cover" />
-                ) : (
-                  <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-bold">{user.name[0].toUpperCase()}</div>
-                )}
-                <span className="text-[10px] mt-1 font-medium">Профиль</span>
-              </Link>
-            </div>
-          )}
         </ThemeProvider>
       </body>
     </html>

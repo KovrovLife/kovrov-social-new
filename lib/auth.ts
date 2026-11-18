@@ -43,7 +43,7 @@ export function getUserId(): number | null {
   
   // Обновляем время последнего визита
   try {
-    db.prepare("UPDATE users SET last_seen = datetime('now') WHERE id = ?").run(userId);
+    void db.run("UPDATE users SET last_seen = NOW() WHERE id = ?", [userId]);
   } catch (e) {}
   
   return userId;

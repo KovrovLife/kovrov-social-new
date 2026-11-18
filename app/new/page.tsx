@@ -3,13 +3,15 @@ import { getUserId } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import NewPostForm from './NewPostForm';
 
-export default function NewPost({ searchParams }: { searchParams: { error?: string } }) {
+export default async function NewPost({ searchParams }: { searchParams: { error?: string } }) {
   const userId = getUserId();
   if (!userId) redirect('/login');
   
-  const me = db.prepare('SELECT district_id FROM users WHERE id = ?').get(userId) as { district_id: number };
-  const cats = db.prepare('SELECT * FROM categories').all() as { id: number; name: string }[];
-  const dists = db.prepare('SELECT * FROM districts').all() as { id: number; name: string }[];
+  const me = (await db.get('SELECT district_id FROM users WHERE id = ?', [userId])) as { district_id: number } | null;
+  if (!me) redirect('/login');
+
+  const cats = (await db.all('SELECT * FROM categories')) as { id: number; name: string }[];
+  const dists = (await db.all('SELECT * FROM districts')) as { id: number; name: string }[];
 
   return (
     <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-6 space-y-4 shadow-sm">

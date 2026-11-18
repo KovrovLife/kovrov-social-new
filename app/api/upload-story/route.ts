@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { uploadToS3 } from '@/lib/s3';
+
+
 
 export async function POST(req: Request) {
   const data = await req.formData();
@@ -12,12 +13,8 @@ export async function POST(req: Request) {
 
   const isVideo = file.type.startsWith('video');
   const extension = isVideo ? '.mp4' : '.jpg';
-  const uploadDir = path.join(process.cwd(), 'public/uploads');
-  await fs.promises.mkdir(uploadDir, { recursive: true });
-
-  const buffer = Buffer.from(await file.arrayBuffer());
   const filename = `story-${Date.now()}-${Math.random().toString(36).substring(7)}${extension}`;
-  await fs.promises.writeFile(path.join(uploadDir, filename), buffer);
+  const url = await uploadToS3(file, filename);
 
-  return NextResponse.json({ url: `/uploads/${filename}`, type: isVideo ? 'video' : 'photo' });
+  return NextResponse.json({ url, type: isVideo ? 'video' : 'photo' });
 }

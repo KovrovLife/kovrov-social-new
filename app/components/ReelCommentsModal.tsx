@@ -22,8 +22,7 @@ export default function ReelCommentsModal({ reelId, comments, onClose }: { reelI
       
       // После успешной отправки очищаем поле и перезагружаем страницу,
       // чтобы увидеть новый комментарий (пока делаем так для простоты)
-      setText('');
-      window.location.reload(); 
+      setText(''); 
     } catch (err) {
       console.error(err);
       alert('Ошибка при отправке комментария');

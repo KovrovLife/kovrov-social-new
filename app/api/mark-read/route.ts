@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   const chatId = Number(searchParams.get('chatId'));
   if (!chatId) return NextResponse.json({ error: 'Bad Request' }, { status: 400 });
 
-  db.prepare('UPDATE messages SET is_read = 1 WHERE receiver_id = ? AND sender_id = ?').run(userId, chatId);
+  db.run('UPDATE messages SET is_read = 1 WHERE receiver_id = ? AND sender_id = ?', [userId, chatId]);
   
   return NextResponse.json({ success: true });
 }
