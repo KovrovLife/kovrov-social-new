@@ -39,7 +39,7 @@ export default function MessageInput({ otherUserId }: { otherUserId: number }) {
       actionData.append('type', type);
       actionData.append('file_url', data.url);
       
-      await sendMediaMessageAction(actionData);
+      await sendMessageAction(actionData);
       window.location.reload();
     } catch (err) {
       alert('Ошибка загрузки: ' + err);
