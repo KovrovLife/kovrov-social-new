@@ -65,8 +65,9 @@ export default function ProfilePage({ params, searchParams }: { params: { id: st
   };
 
   const coverStyle = profileUser.cover_url 
-    ? (profileUser.cover_url.startsWith('/uploads') ? { backgroundImage: `url(${profileUser.cover_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { backgroundColor: profileUser.cover_url })
+    ? ((profileUser.cover_url.startsWith('/uploads') || profileUser.cover_url.startsWith('http')) ? { backgroundImage: `url(${profileUser.cover_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { backgroundColor: profileUser.cover_url })
     : { backgroundImage: 'linear-gradient(to right, #34d399, #14b8a6)' };
+
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
