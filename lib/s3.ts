@@ -3,7 +3,7 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 export async function uploadToS3(file: File, filename: string): Promise<string> {
   const s3Client = new S3Client({
     region: 'ru-1',
-    endpoint: 'https://twcstorage.ru',
+    endpoint: 'https://s3.twcstorage.ru',
     credentials: {
       accessKeyId: (process.env.S3_ACCESS_KEY || '').trim(),
       secretAccessKey: (process.env.S3_SECRET_KEY || '').trim(),
@@ -22,5 +22,5 @@ export async function uploadToS3(file: File, filename: string): Promise<string> 
     })
   );
 
-  return 'https://twcstorage.ru/kovrov-life-uploads/' + filename;
+  return 'https://s3.twcstorage.ru/kovrov-life-uploads/' + filename;
 }
