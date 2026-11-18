@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { sendMessageAction, sendMediaMessageAction } from '../../actions';
+import { sendMessageAction } from '../../actions';
 
 export default function MessageInput({ otherUserId }: { otherUserId: number }) {
   const [text, setText] = useState('');
